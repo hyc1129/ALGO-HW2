@@ -1,0 +1,5 @@
+@"
+*.exe
+*.o
+*.obj
+"@ | Set-Content -Encoding ascii .gitignore
