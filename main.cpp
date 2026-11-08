@@ -15,6 +15,14 @@ void PrintUsage(const char* prog_name) {
     std::cout
         << "Usage: " << prog_name << " [OPTIONS]\n\n"
         << "Options:\n"
+        << "  --test              Run correctness, invariant, and memory-leak tests.\n"
+        << "  -exp <1|2|3>        Run the specified experiment independently:\n"
+        << "                        1: Compare BST, AVL(delta=1), Treap, SkipList(p=0.5)\n"
+        << "                        2: AVL sensitivity across delta in {1, 2, 3, 5, 10}\n"
+        << "                        3: SkipList sensitivity across p in {0.10..0.90}\n"
+        << "  -trials <N>         Number of independent trials per n (default: 10).\n"
+        << "  --seed <S>          Starting 64-bit random seed (default: 42).\n"
+        << "  -h, --help          Show this help message and exit.\n\n"
         << "  --test                 Run the 5 PDF correctness tests + custom test.\n"
         << "  --exp, -exp <1|2|3|all> Run the specified experiment:\n"
         << "                           1   : Total Insert time (n = 2^0 .. 2^20, 4 DS)\n"
@@ -26,6 +34,9 @@ void PrintUsage(const char* prog_name) {
         << "  -h, --help             Show this help message and exit.\n\n"
         << "Examples:\n"
         << "  " << prog_name << " --test\n"
+        << "  " << prog_name << " -exp 1 -trials 10 --seed 42\n"
+        << "  " << prog_name << " -exp 2 -trials 10 --seed 100\n"
+        << "  " << prog_name << " -exp 3 -trials 10 --seed 2026\n";
         << "  " << prog_name << " --exp 1 --trials 10 --seed 0\n"
         << "  " << prog_name << " --exp 2 --trials 10 --seed 0\n"
         << "  " << prog_name << " --exp 3 --trials 10 --seed 0\n";
@@ -40,8 +51,10 @@ int main(int argc, char* argv[]) {
     }
 
     bool run_test = false;
+    int exp_id = 0;
     int exp_id = 0;  // 0 = none, 1..3 = single experiment, 4 = all
     int trials = 10;
+    std::uint64_t seed = 42ULL;
     std::uint64_t seed = 0ULL;
 
     try {
@@ -53,11 +66,19 @@ int main(int argc, char* argv[]) {
                 return EXIT_SUCCESS;
             } else if (arg == "--test" || arg == "-test") {
                 run_test = true;
+            } else if (arg == "-exp" || arg == "--exp") {
             } else if (arg == "--exp" || arg == "-exp") {
                 if (i + 1 >= argc) {
+                    throw std::invalid_argument("Missing experiment ID after " + arg +
+                                                " (expected 1, 2, or 3).");
                     throw std::invalid_argument("Missing value after " + arg +
                                                 " (expected 1, 2, 3, or all).");
                 }
+                exp_id = std::stoi(argv[++i]);
+                if (exp_id < 1 || exp_id > 3) {
+                    throw std::invalid_argument("Invalid experiment ID '" +
+                                                std::to_string(exp_id) +
+                                                "'. Expected 1, 2, or 3.");
                 std::string val = argv[++i];
                 if (val == "all") {
                     exp_id = 4;
@@ -68,6 +89,7 @@ int main(int argc, char* argv[]) {
                                                     "'. Expected 1, 2, 3, or all.");
                     }
                 }
+            } else if (arg == "-trials" || arg == "--trials") {
             } else if (arg == "--trials" || arg == "-trials") {
                 if (i + 1 >= argc) {
                     throw std::invalid_argument("Missing integer value after " + arg + ".");
@@ -82,12 +104,14 @@ int main(int argc, char* argv[]) {
                 }
                 seed = std::stoull(argv[++i]);
             } else {
+                throw std::invalid_argument("Unrecognized command-line option: " + arg);
                 throw std::invalid_argument("Unrecognized option: " + arg);
             }
         }
 
         if (!run_test && exp_id == 0) {
             throw std::invalid_argument(
+                "No action specified. Pass --test and/or -exp <1|2|3>.");
                 "No action specified. Pass --test and/or --exp <1|2|3|all>.");
         }
 
@@ -95,11 +119,14 @@ int main(int argc, char* argv[]) {
             algo_hw2::RunCorrectnessTests(seed);
         }
 
+        if (exp_id == 1) {
         if (exp_id == 1 || exp_id == 4) {
             algo_hw2::RunExperiment1(trials, seed);
+        } else if (exp_id == 2) {
         }
         if (exp_id == 2 || exp_id == 4) {
             algo_hw2::RunExperiment2(trials, seed);
+        } else if (exp_id == 3) {
         }
         if (exp_id == 3 || exp_id == 4) {
             algo_hw2::RunExperiment3(trials, seed);

@@ -15,6 +15,7 @@
 namespace algo_hw2 {
 
 /**
+ * @brief Represents a single (id, score) input record for insertion benchmarks.
  * @brief Represents a single (id, score) input record.
  */
 struct Record {
@@ -23,6 +24,10 @@ struct Record {
 };
 
 /**
+ * @brief High-resolution stopwatch strictly backed by std::chrono::steady_clock.
+ *
+ * std::chrono::steady_clock is monotonic and never adjusted by system wall-clock
+ * changes, making it ideal for micro- and macro-benchmarking.
  * @brief High-resolution monotonic stopwatch backed by std::chrono::steady_clock.
  */
 class SteadyTimer {
@@ -64,8 +69,27 @@ private:
 };
 
 /**
+ * @brief Anti-optimization sink for SearchAVG return values.
+ *
+ * Writing accumulated search results into a volatile variable outside the timed
+ * region prevents -O2/-O3 dead-code elimination from eliding the query loop.
  * @brief Shared (id, score) input generator used across all three experiments.
  *        id ~ UNI(min_id, max_id), score ~ UNI(min_score, max_score), integers.
+ */
+inline void ConsumeChecksum(double checksum) noexcept {
+    static volatile double sink = 0.0;
+    sink = sink + checksum;
+}
+
+/**
+ * @brief Generates N uniform random (id, score) records outside the timed block.
+ *
+ * @param count     Number of records (n) to generate.
+ * @param min_id    Minimum ID (inclusive), e.g., 1.
+ * @param max_id    Maximum ID (inclusive), e.g., 2^20.
+ * @param min_score Minimum score (inclusive), e.g., 0.
+ * @param max_score Maximum score (inclusive), e.g., 100.
+ * @param seed      Deterministic RNG seed.
  */
 inline std::vector<Record> GenerateInsertDataset(
     std::size_t count,
@@ -87,6 +111,7 @@ inline std::vector<Record> GenerateInsertDataset(
 }
 
 /**
+ * @brief Generates Q uniform random query IDs outside the timed block.
  * @brief Generates sequential IDs 1, 2, ..., count (for Experiment 3 Question 2).
  */
 inline std::vector<Record> GenerateSequentialDataset(
@@ -126,6 +151,7 @@ inline std::vector<int> GenerateQueryDataset(
 }
 
 /**
+ * @brief Initializes a CSV file with its header row (overwriting any prior run).
  * @brief Initializes a CSV file with its header row.
  */
 inline void InitializeCSV(const std::string& filename, const std::string& header_line) {
@@ -138,6 +164,11 @@ inline void InitializeCSV(const std::string& filename, const std::string& header
 }
 
 /**
+ * @brief Appends a single row to a CSV file and immediately flushes & closes it.
+ *
+ * SAFETY MECHANISM: By opening in std::ios::app, flushing, and closing right after
+ * completing the trials for each dataset size n, all completed measurements are
+ * safely persisted on disk even if a subsequent larger n triggers an OOM crash.
  * @brief Prepares the unified raw_data.csv file for `exp_id` (1, 2, or 3):
  *        preserves rows belonging to other experiments while clearing any old
  *        rows from `exp_id`, so subsequent AppendCSVRow calls safely append per n.
@@ -189,6 +220,7 @@ inline void AppendCSVRow(const std::string& filename, const std::string& row_lin
 }
 
 /**
+ * @brief Deterministically mixes a base seed with experiment tags (SplitMix64).
  * @brief SplitMix64 bijection for deriving independent deterministic sub-seeds
  *        from (starting_seed + trial_i) without seed correlation.
  */

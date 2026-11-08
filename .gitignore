@@ -2,4 +2,7 @@
 *.exe
 *.o
 *.obj
+*.csv
+*.txt
+*.pdf
 "@ | Set-Content -Encoding ascii .gitignore
