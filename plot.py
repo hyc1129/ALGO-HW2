@@ -264,7 +264,7 @@ def main() -> None:
     if not os.path.isfile(args.input):
         sys.stderr.write(
             f"[Error] Input CSV '{args.input}' not found.\n"
-            "Please run `./treebench_bench --exp all --trials 10 --seed 0` first.\n"
+            "Please run `./treebench --exp all --trials 10 --seed 0` first.\n"
         )
         sys.exit(1)
 

@@ -26,7 +26,7 @@ constexpr InitialRecordTag kInitialRecord{};
 
 /**
  * @brief Global node allocation tracker for memory-leak verification in `--test`.
- *        When compiled with `-DNO_MEMORY_TRACKER` (target `bench` / `treebench_bench`),
+ *        When compiled with `-DNO_MEMORY_TRACKER` (via `make bench`),
  *        all tracking hooks compile down to zero instructions so Experiment 1
  *        insertion timing has zero counter overhead.
  */

@@ -1000,7 +1000,7 @@ inline void RunCorrectnessTests(std::uint64_t seed) {
               "Post-order destructors freed 100% of allocated nodes (0 leaks)");
     } else {
         std::cout << "  (Compiled with -DNO_MEMORY_TRACKER for zero-overhead benchmarking;\n"
-                  << "   compile without -DNO_MEMORY_TRACKER via `make` / `treebench` to audit node counts.)\n";
+                  << "   compile without -DNO_MEMORY_TRACKER via `make` to audit node counts.)\n";
     }
 
     std::cout << "\n========================================================================\n";

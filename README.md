@@ -30,7 +30,7 @@ This project implements four dynamic search data structures in modular **C++ (C+
 | `Experiments.h` | 五組手算正確性測試 + 自訂邊界測試 + 大規模參數化驗證 (`RunCorrectnessTests`)，以及實驗一、二、三與報告輔助統計表 (`RunExperiment1`–`3`)。 | Exact 5 PDF correctness tests + custom edge-case test + large-scale parameterized verification, plus Experiments 1, 2, and 3. |
 | `main.cpp` | 指令列參數解析 (`--test`, `--exp`, `--trials`, `--seed`)。 | CLI entry point parsing `--test`, `--exp`, `--trials`, and `--seed`. |
 | `plot.py` | 讀取 `raw_data.csv`，自動繪製並輸出符合規格之 `fig1.png`、`fig2.png`、`fig3.png`。 | Reads `raw_data.csv` and generates `fig1.png`, `fig2.png`, and `fig3.png` with exact scales, units, and $\Delta$ / $p$ legends. |
-| `Makefile` | 提供預設測試 target (`all` $\rightarrow$ `treebench`)、零計數開銷的正式量測 target (`bench` $\rightarrow$ `treebench_bench`) 與繪圖 target (`plot`)。 | Provides default test target (`all` $\rightarrow$ `treebench`), zero-counter-overhead benchmark target (`bench` $\rightarrow$ `treebench_bench`), and `plot` target. |
+| `Makefile` | 統一輸出單一執行檔 `treebench`：預設 `make` 啟用 `MemoryTracker` 供 `--test` 檢查記憶體，`make bench` 以 `-DNO_MEMORY_TRACKER` 重新編譯 `treebench` 供正式實驗量測，並提供 `make plot`。 | Outputs a single executable `treebench`: default `make` keeps `MemoryTracker` active for `--test`, `make bench` recompiles `treebench` with `-DNO_MEMORY_TRACKER` for formal benchmarks, plus `make plot`. |
 
 ### 資料結構操作函式命名 / Explicit Data Structure Operations (`DataStructures.h`)
 每一種資料結構皆提供明確標示結構名稱的操作函式（單筆初始建立 `CreateXXX` 提供靜態工廠函式與 `kInitialRecord` tag 建構子，避免與 `(p, seed)` 等參數建構子產生重載歧義）：
@@ -49,48 +49,47 @@ Each class provides explicitly named member functions (single-record `CreateXXX`
 
 ---
 
-## 3. 編譯方式（區分測試用與正式計時用 Target）/ Build Instructions
+## 3. 編譯方式（單一執行檔 `treebench`）/ Build Instructions (Single Executable `treebench`)
 
-為確保 `--test` 能精確驗證「零記憶體洩漏」，同時避免節點配置計數器 (`MemoryTracker`) 的遞增/遞減成本算進**實驗一的插入時間**，本專案透過編譯期旗標 `-DNO_MEMORY_TRACKER` 區分兩個執行檔：
+本專案統一編譯為**單一執行檔 `treebench`**（Windows 為 `treebench.exe`）。為確保 `--test` 能精確驗證「零記憶體洩漏」，同時避免節點配置計數器 (`MemoryTracker`) 的遞增/遞減成本算進**實驗一的插入時間**，`Makefile` 提供兩個編譯 target 來產生同一個 `treebench` 執行檔：
 
-To guarantee exact zero-memory-leak verification in `--test` while ensuring that `MemoryTracker` node allocation/deallocation counters add **zero overhead** to Experiment 1 insertion timings, the build provides two targets via the `-DNO_MEMORY_TRACKER` compile-time switch:
+This project builds into a **single executable `treebench`** (`treebench.exe` on Windows). To guarantee exact zero-memory-leak verification in `--test` while ensuring that `MemoryTracker` node allocation/deallocation counters add **zero overhead** to Experiment 1 insertion timings, the `Makefile` provides two targets that output the same `treebench` binary:
 
-1. **測試用執行檔 `treebench`（預設不定義 `NO_MEMORY_TRACKER`）**：啟用 `MemoryTracker`，供 `--test` 驗證五組手算測資、大測資不變量與後序解構子零洩漏。  
-   **Test Binary `treebench` (default, `MemoryTracker` enabled)**: Used for `./treebench --test` to verify correctness and audit exact node allocations/deallocations.
-2. **正式量測用執行檔 `treebench_bench`（Target `bench`，定義 `-DNO_MEMORY_TRACKER`）**：節點建構與解構完全不做任何計數指令，**正式執行實驗一（以及實驗二、三）量測時請務必使用 `bench` target 編譯出的 `treebench_bench`**。  
-   **Benchmark Binary `treebench_bench` (Target `bench`, `-DNO_MEMORY_TRACKER` defined)**: Compiles out all `MemoryTracker` instructions; **always use `make bench` (`./treebench_bench`) for formal Experiment 1, 2, and 3 measurements**.
+1. **一般測試編譯 `make`（預設不定義 `NO_MEMORY_TRACKER` $\rightarrow$ `treebench`）**：啟用 `MemoryTracker`，供 `./treebench --test` 驗證五組手算測資、大測資不變量與後序解構子零洩漏。  
+   **Default Test Build `make` (`MemoryTracker` enabled $\rightarrow$ `treebench`)**: Used for `./treebench --test` to verify correctness and audit exact node allocations/deallocations.
+2. **正式量測編譯 `make bench`（定義 `-DNO_MEMORY_TRACKER` $\rightarrow$ `treebench`）**：節點建構與解構完全不做任何計數指令，**正式執行實驗一（以及實驗二、三）量測時請使用 `make bench` 重新編譯 `treebench`**（`make exp1`、`make exp2`、`make exp3`、`make exp_all` 皆會自動先執行 `bench`）。  
+   **Benchmark Build `make bench` (`-DNO_MEMORY_TRACKER` defined $\rightarrow$ `treebench`)**: Compiles out all `MemoryTracker` instructions; **use `make bench` before running formal Experiment 1, 2, and 3 measurements with `./treebench`** (`make exp1`, `make exp2`, `make exp3`, and `make exp_all` automatically invoke `bench`).
 
 ### Linux / macOS / WSL / MinGW (`Makefile` or `g++`)
 ```bash
-# 1. 編譯測試用執行檔 (treebench) / Build test binary with MemoryTracker:
+# 1. 編譯測試模式 (啟用 MemoryTracker) / Build with MemoryTracker for --test:
 make
 # 或直接呼叫 g++ / Or compile directly:
 g++ -std=c++11 -O2 -Wall -Wextra -Wpedantic main.cpp -o treebench
 
-# 2. 編譯正式量測用執行檔 (treebench_bench) / Build zero-overhead benchmark binary:
+# 2. 編譯正式量測模式 (關閉 MemoryTracker) / Build zero-overhead binary for experiments:
 make bench
 # 或直接呼叫 g++ / Or compile directly:
-g++ -std=c++11 -O2 -Wall -Wextra -Wpedantic -DNO_MEMORY_TRACKER main.cpp -o treebench_bench
+g++ -std=c++11 -O2 -Wall -Wextra -Wpedantic -DNO_MEMORY_TRACKER main.cpp -o treebench
 ```
 
 ### Windows (Visual Studio Developer Command Prompt / PowerShell)
 ```powershell
-# 1. 測試用執行檔 (treebench.exe):
+# 1. 測試模式 (treebench.exe, 啟用 MemoryTracker):
 cl /nologo /EHsc /O2 /W4 main.cpp /Fe:treebench.exe
 
-# 2. 正式量測用執行檔 (treebench_bench.exe, 關閉 MemoryTracker):
-cl /nologo /EHsc /O2 /W4 /DNO_MEMORY_TRACKER main.cpp /Fe:treebench_bench.exe
+# 2. 正式量測模式 (treebench.exe, 關閉 MemoryTracker):
+cl /nologo /EHsc /O2 /W4 /DNO_MEMORY_TRACKER main.cpp /Fe:treebench.exe
 ```
 
 ---
 
 ## 4. 重現正確性測試、三個實驗與三張圖的指令 / Reproduction Commands
 
-> Windows PowerShell 請將 `./treebench` 與 `./treebench_bench` 改為 `.\treebench.exe` 與 `.\treebench_bench.exe`（參數亦支援單破折號別名 `-exp`、`-trials`、`-seed`）。  
-> On Windows PowerShell, use `.\treebench.exe` and `.\treebench_bench.exe` (single-dash `-exp`, `-trials`, `-seed` are also accepted).
+> Windows PowerShell 請將 `./treebench` 改為 `.\treebench.exe`（參數亦支援單破折號別名 `-exp`、`-trials`、`-seed`）。  
+> On Windows PowerShell, use `.\treebench.exe` (single-dash `-exp`, `-trials`, `-seed` are also accepted).
 
-### (1) 正確性測試（使用預設 `treebench` 執行檔）
-### Correctness Test Suite (Use the default `treebench` binary)
+### (1) 正確性測試 / Correctness Test Suite
 ```bash
 make test
 # 或 / Or:
@@ -105,12 +104,12 @@ make test
 
 ### (2) 圖 1 數據 — 實驗一：插入 $n$ 筆資料的平均總時間 ($n = 2^0 \dots 2^{20}$)
 ### Figure 1 Data — Experiment 1: Average Total Insertion Time ($n = 2^0 \dots 2^{20}$)
-> **注意 / Important**: 正式量測請使用 `make bench` 編譯出的 `./treebench_bench`（定義 `-DNO_MEMORY_TRACKER`），確保節點建構/解構不含任何 `MemoryTracker` 計數成本。  
-> Always run formal Experiment 1 benchmarks with `./treebench_bench` (`make bench`, compiled with `-DNO_MEMORY_TRACKER`) so node allocation/deallocation incurs zero tracking overhead.
+> **注意 / Important**: 正式量測請使用 `make bench` 編譯出的 `./treebench`（定義 `-DNO_MEMORY_TRACKER`），確保節點建構/解構不含任何 `MemoryTracker` 計數成本。  
+> Always run formal Experiment 1 benchmarks after `make bench` (compiled with `-DNO_MEMORY_TRACKER`) so node allocation/deallocation incurs zero tracking overhead.
 ```bash
 make exp1
 # 或 / Or:
-./treebench_bench --exp 1 --trials 10 --seed 0
+./treebench --exp 1 --trials 10 --seed 0
 ```
 - **比較對象 / Structures**: `BST`, `AVL(delta=1)`, `Treap`, `SkipList(p=1/2)`
 - **短區間校準 / Sub-millisecond Calibration**: 當單次建構時間 $< 1\text{ ms}$ 時，自動以同一份輸入建立 $r$ 個獨立結構一起計時再除以 $r$，並於停止計時後才釋放全部 $r$ 個結構。
@@ -121,7 +120,7 @@ make exp1
 ```bash
 make exp2
 # 或 / Or:
-./treebench_bench --exp 2 --trials 10 --seed 0
+./treebench --exp 2 --trials 10 --seed 0
 ```
 - **比較對象 / Structures**: `BST`, `AVL(delta=1)`, `Treap`, `SkipList(p=1/2)`
 - **防最佳化與命中率統計 / Anti-`-O2` & Hit Ratio**: 將 $Q$ 次查詢回傳值加總並印出以防止編譯器刪除迴圈；計時結束後重跑同一組 $Q$ 筆查詢，統計未回傳 `-1`（查得到）的比例寫入 `exp2_hit_ratio.csv`（供報告實驗二第 2(a) 題使用）。
@@ -132,7 +131,7 @@ make exp2
 ```bash
 make exp3
 # 或 / Or:
-./treebench_bench --exp 3 --trials 10 --seed 0
+./treebench --exp 3 --trials 10 --seed 0
 ```
 - **比較對象 / 7 Structures**: `BST`, `AVL(delta=1)`, `AVL(delta=5)`, `Treap`, `SkipList(p=1/2)`, `SkipList(p=3/4)`, `SkipList(p=1/4)`
 - **附加分析輸出 / Report Helper Tables (`exp3_report_tables.txt`)**:
@@ -146,7 +145,7 @@ make exp3
 ```bash
 make exp_all
 # 或 / Or:
-./treebench_bench --exp all --trials 10 --seed 0
+./treebench --exp all --trials 10 --seed 0
 ```
 
 ### (6) 使用 `plot.py` 繪製圖 1、圖 2、圖 3 / Generate Figures 1, 2, and 3 (`plot.py`)
@@ -173,7 +172,7 @@ python3 plot.py
 - `Treap` 的 `priority` 與 `SkipList` 的銅板也要由種子決定；同一個種子跑兩次，圖 3 的高度要一模一樣。
 
 ### (1) 預設與建議起始種子 / Default & Recommended Starting Seed
-- 指令列參數：`--seed <S>`（預設值為 **`0`**，即 `./treebench_bench --exp all --trials 10 --seed 0`）。
+- 指令列參數：`--seed <S>`（預設值為 **`0`**，即 `./treebench --exp all --trials 10 --seed 0`）。
 - 亂數引擎：統一使用 C++11 標準 64 位元梅森旋轉演算法 `std::mt19937_64`。
 
 ### (2) 第 $i$ 個 Trial 的種子衍生公式 / Seed Derivation Formula (`DeriveTrialSeeds` in `Experiments.h`)
